@@ -1,0 +1,3 @@
+node_modules/
+# Shortcuts store absolute paths of the machine they were created on; regenerate with `npm run shortcut`.
+*.lnk

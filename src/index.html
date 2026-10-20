@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+<title>Claude Usage</title>
+<style>
+  :root {
+    --bg: rgba(24, 23, 21, 0.94);
+    --border: rgba(255, 255, 255, 0.09);
+    --text: #f2efe9;
+    --muted: #a39e94;
+    --track: rgba(255, 255, 255, 0.08);
+    --accent: #d97757;
+    --ok: #6fb98a;
+    --warn: #e0b24f;
+    --crit: #e5615a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: transparent; overflow: hidden; }
+  body {
+    font: 12px/1.4 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    color: var(--text);
+    user-select: none;
+  }
+  .panel {
+    margin: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    backdrop-filter: blur(12px);
+    -webkit-app-region: drag;
+    overflow: hidden;
+  }
+  button, select, .no-drag { -webkit-app-region: no-drag; }
+
+  header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 10px 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo { width: 14px; height: 14px; flex: none; }
+  .title { font-weight: 600; font-size: 12.5px; }
+  .plan {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--accent); border: 1px solid rgba(217,119,87,.4);
+    border-radius: 4px; padding: 0 5px;
+  }
+  .spacer { flex: 1; }
+  .icon-btn {
+    width: 22px; height: 22px; border: 0; border-radius: 6px;
+    background: transparent; color: var(--muted); cursor: pointer;
+    display: grid; place-items: center;
+  }
+  .icon-btn:hover { background: rgba(255,255,255,.08); color: var(--text); }
+  .icon-btn svg { width: 13px; height: 13px; }
+  .icon-btn.spin svg { animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  main { padding: 6px 12px 4px; }
+  .section-title {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); margin: 8px 0 6px;
+  }
+  .limit { margin-bottom: 11px; }
+  .limit-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .limit-name { font-weight: 500; }
+  .limit-pct { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .bar { height: 6px; border-radius: 3px; background: var(--track); margin: 5px 0 4px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; border-radius: 3px; background: var(--ok); transition: width .4s ease; }
+  .bar > i.warn { background: var(--warn); }
+  .bar > i.crit { background: var(--crit); }
+  .limit-sub { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .badge { font-size: 10px; color: var(--crit); margin-left: 4px; }
+
+  .msg { padding: 8px 10px; margin: 8px 0; border-radius: 8px; font-size: 11.5px; }
+  .msg.error { background: rgba(229,97,90,.12); color: #f0a29d; }
+  .msg.paused { background: rgba(224,178,79,.12); color: #ecc97c; }
+
+  footer {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px 8px 12px; border-top: 1px solid var(--border);
+    color: var(--muted); font-size: 11px;
+  }
+  .toggle {
+    display: flex; align-items: center; gap: 6px; cursor: pointer;
+    border: 0; background: transparent; color: var(--muted); font: inherit;
+  }
+  .switch {
+    width: 26px; height: 14px; border-radius: 7px; background: var(--track); position: relative; transition: background .2s;
+  }
+  .switch::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px;
+    border-radius: 50%; background: var(--muted); transition: left .2s, background .2s;
+  }
+  .toggle.on .switch { background: rgba(224,178,79,.35); }
+  .toggle.on .switch::after { left: 14px; background: var(--warn); }
+  .toggle.on { color: var(--warn); }
+  select {
+    background: rgba(255,255,255,.06); color: var(--text); border: 1px solid var(--border);
+    border-radius: 5px; font: inherit; font-size: 11px; padding: 1px 3px;
+  }
+  select option { background: #222; }
+
+  /* Minimized pill */
+  .compact {
+    height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 6px 0 12px;
+  }
+  .mini { flex: 1; min-width: 0; }
+  .mini-row { display: flex; align-items: center; gap: 6px; font-size: 11px; font-variant-numeric: tabular-nums; }
+  .mini-row + .mini-row { margin-top: 3px; }
+  .mini-label { width: 14px; color: var(--muted); font-weight: 600; }
+  .mini .bar { flex: 1; margin: 0; height: 5px; }
+  .mini-pct { width: 32px; text-align: right; font-weight: 600; }
+  .compact .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warn); flex: none; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="panel" id="panel">
+    <!-- Full view -->
+    <div id="full">
+      <header>
+        <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="#d97757" stroke-width="2.6" stroke-linecap="round"><path d="M12 2v20M2 12h20M5 5l14 14M19 5L5 19"/></svg>
+        <span class="title">Claude Usage</span>
+        <span class="plan hidden" id="plan"></span>
+        <span class="spacer"></span>
+        <button class="icon-btn" id="refresh" title="Atualizar agora">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+        </button>
+        <button class="icon-btn" id="minimize" title="Minimizar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg>
+        </button>
+        <button class="icon-btn" id="close" title="Ocultar (reabra pelo ícone na bandeja)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </header>
+      <main id="content"></main>
+      <footer>
+        <button class="toggle" id="pause" title="Pausar a atualização automática dos dados">
+          <span class="switch"></span><span id="pause-label">Pausar</span>
+        </button>
+        <span class="spacer"></span>
+        <select id="interval" title="Intervalo de atualização">
+          <option value="30">30s</option>
+          <option value="60">1 min</option>
+          <option value="120">2 min</option>
+          <option value="300">5 min</option>
+          <option value="600">10 min</option>
+        </select>
+        <span id="updated"></span>
+      </footer>
+    </div>
+
+    <!-- Minimized view -->
+    <div id="compact" class="compact hidden">
+      <div class="mini" id="mini"></div>
+      <span class="dot hidden" id="mini-paused" title="Atualização pausada"></span>
+      <button class="icon-btn" id="expand" title="Expandir">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v6h6M20 10V4h-6M4 20l7-7M20 4l-7 7"/></svg>
+      </button>
+    </div>
+  </div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let state = null;
+
+  const LABELS = {
+    session: 'Sessão atual (5h)',
+    weekly_all: 'Semanal — todos os modelos',
+    weekly_opus: 'Semanal — Opus',
+    weekly_sonnet: 'Semanal — Sonnet',
+    weekly_oauth_apps: 'Semanal — apps OAuth',
+    weekly_cowork: 'Semanal — Cowork',
+  };
+  const GROUPS = { session: 'Sessão', weekly: 'Semanal' };
+
+  function labelFor(l) {
+    if (LABELS[l.kind]) return LABELS[l.kind] + (l.scope ? ` (${l.scope})` : '');
+    const pretty = String(l.kind).replace(/_/g, ' ').replace(/^weekly /, 'Semanal — ');
+    return pretty.charAt(0).toUpperCase() + pretty.slice(1) + (l.scope ? ` (${l.scope})` : '');
+  }
+
+  // Prefer the generic `limits` list (what /usage renders); fall back to the named windows.
+  function limitsFrom(d) {
+    if (Array.isArray(d.limits) && d.limits.length) return d.limits;
+    const named = [
+      ['five_hour', 'session', 'session'],
+      ['seven_day', 'weekly_all', 'weekly'],
+      ['seven_day_opus', 'weekly_opus', 'weekly'],
+      ['seven_day_sonnet', 'weekly_sonnet', 'weekly'],
+    ];
+    return named
+      .filter(([k]) => d[k])
+      .map(([k, kind, group]) => ({ kind, group, percent: d[k].utilization ?? 0, resets_at: d[k].resets_at }));
+  }
+
+  function level(l) {
+    const p = Number(l.percent) || 0;
+    if (l.severity === 'critical' || l.severity === 'exceeded' || p >= 90) return 'crit';
+    if (l.severity === 'warning' || p >= 70) return 'warn';
+    return '';
+  }
+
+  function fmtCountdown(iso) {
+    if (!iso) return '';
+    let ms = Date.parse(iso) - Date.now();
+    if (ms <= 0) return 'resetando…';
+    const d = Math.floor(ms / 864e5); ms %= 864e5;
+    const h = Math.floor(ms / 36e5); ms %= 36e5;
+    const m = Math.floor(ms / 6e4);
+    const s = Math.floor((ms % 6e4) / 1000);
+    if (d) return `${d}d ${h}h ${m}m`;
+    if (h) return `${h}h ${String(m).padStart(2, '0')}m`;
+    return `${m}m ${String(s).padStart(2, '0')}s`;
+  }
+
+  function fmtResetAt(iso) {
+    const t = new Date(iso);
+    const sameDay = t.toDateString() === new Date().toDateString();
+    const time = t.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    if (sameDay) return `hoje ${time}`;
+    return t.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) + ` ${time}`;
+  }
+
+  function fmtMoney(minor, exp, cur) {
+    if (minor == null) return '—';
+    const v = minor / Math.pow(10, exp ?? 2);
+    try { return v.toLocaleString('pt-BR', { style: 'currency', currency: cur || 'USD' }); }
+    catch { return v.toFixed(2); }
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+
+  function limitHtml(l) {
+    const pct = Math.max(0, Math.min(100, Number(l.percent) || 0));
+    const locked = l.locked_reason ? `<span class="badge">bloqueado</span>` : '';
+    const reset = l.resets_at
+      ? `Reseta em <span data-countdown="${esc(l.resets_at)}">${fmtCountdown(l.resets_at)}</span> · ${fmtResetAt(l.resets_at)}`
+      : 'Sem reset agendado';
+    return `
+      <div class="limit">
+        <div class="limit-row">
+          <span class="limit-name">${esc(labelFor(l))}${locked}</span>
+          <span class="limit-pct">${Math.round(pct)}%</span>
+        </div>
+        <div class="bar"><i class="${level(l)}" style="width:${pct}%"></i></div>
+        <div class="limit-sub">${reset}</div>
+      </div>`;
+  }
+
+  function extraHtml(d) {
+    const ex = d.extra_usage;
+    const sp = d.spend;
+    if (!(ex && ex.is_enabled) && !(sp && sp.enabled)) return '';
+    let html = `<div class="section-title">Uso extra</div>`;
+    if (sp && sp.used) {
+      const used = fmtMoney(sp.used.amount_minor, sp.used.exponent, sp.used.currency);
+      const limit = sp.limit ? fmtMoney(sp.limit.amount_minor, sp.limit.exponent, sp.limit.currency) : null;
+      const pct = Math.max(0, Math.min(100, Number(sp.percent) || 0));
+      html += `
+        <div class="limit">
+          <div class="limit-row"><span class="limit-name">Créditos usados</span><span class="limit-pct">${used}${limit ? ` / ${limit}` : ''}</span></div>
+          ${limit ? `<div class="bar"><i class="${level(sp)}" style="width:${pct}%"></i></div>` : ''}
+          ${sp.balance ? `<div class="limit-sub">Saldo: ${fmtMoney(sp.balance.amount_minor, sp.balance.exponent, sp.balance.currency)}</div>` : ''}
+        </div>`;
+    } else if (ex) {
+      const dp = ex.decimal_places ?? 2;
+      const used = ex.used_credits != null ? fmtMoney(ex.used_credits, dp, ex.currency) : '—';
+      const limit = ex.monthly_limit != null ? fmtMoney(ex.monthly_limit, dp, ex.currency) : null;
+      const pct = Math.max(0, Math.min(100, Number(ex.utilization) || 0));
+      html += `
+        <div class="limit">
+          <div class="limit-row"><span class="limit-name">Créditos do mês</span><span class="limit-pct">${used}${limit ? ` / ${limit}` : ''}</span></div>
+          ${limit ? `<div class="bar"><i class="${pct >= 90 ? 'crit' : pct >= 70 ? 'warn' : ''}" style="width:${pct}%"></i></div>` : ''}
+          ${ex.spend_limit_reached ? `<div class="limit-sub" style="color:var(--crit)">Limite de gastos atingido</div>` : ''}
+        </div>`;
+    }
+    return html;
+  }
+
+  function render() {
+    if (!state) return;
+    const d = state.data;
+    $('full').classList.toggle('hidden', state.compact);
+    $('compact').classList.toggle('hidden', !state.compact);
+
+    $('refresh').classList.toggle('spin', !!state.fetching);
+    $('pause').classList.toggle('on', state.paused);
+    $('pause-label').textContent = state.paused ? 'Pausado' : 'Pausar';
+    $('interval').value = String(state.intervalSec);
+    $('interval').disabled = state.paused;
+    $('mini-paused').classList.toggle('hidden', !state.paused);
+
+    if (d && d.plan) {
+      $('plan').textContent = d.plan;
+      $('plan').classList.remove('hidden');
+    }
+
+    let html = '';
+    if (state.paused) html += `<div class="msg paused">Atualização pausada — mostrando os últimos dados obtidos.</div>`;
+    if (state.error) html += `<div class="msg error">${esc(state.error)}</div>`;
+
+    const limits = d ? limitsFrom(d) : [];
+    if (!d && !state.error) html += `<div class="limit-sub" style="padding:14px 0">Carregando…</div>`;
+    const groups = {};
+    for (const l of limits) (groups[l.group || 'other'] ||= []).push(l);
+    for (const [g, items] of Object.entries(groups)) {
+      html += `<div class="section-title">${esc(GROUPS[g] || g)}</div>`;
+      html += items.map(limitHtml).join('');
+    }
+    if (d) html += extraHtml(d);
+    $('content').innerHTML = html;
+
+    // Minimized: session + weekly bars
+    const session = limits.find((l) => l.kind === 'session');
+    const weekly = limits.find((l) => l.kind === 'weekly_all') || limits.find((l) => l.group === 'weekly');
+    $('mini').innerHTML = [['S', session], ['W', weekly]]
+      .filter(([, l]) => l)
+      .map(([tag, l]) => {
+        const pct = Math.max(0, Math.min(100, Number(l.percent) || 0));
+        return `<div class="mini-row" title="${esc(labelFor(l))} — reseta em ${fmtCountdown(l.resets_at)}">
+          <span class="mini-label">${tag}</span>
+          <div class="bar"><i class="${level(l)}" style="width:${pct}%"></i></div>
+          <span class="mini-pct">${Math.round(pct)}%</span>
+        </div>`;
+      }).join('') || `<div class="mini-row" style="color:var(--muted)">${state.error ? 'Erro ao obter dados' : 'Carregando…'}</div>`;
+
+    tick();
+    reportHeight();
+  }
+
+  function tick() {
+    document.querySelectorAll('[data-countdown]').forEach((el) => {
+      el.textContent = fmtCountdown(el.dataset.countdown);
+    });
+    if (state && state.lastFetchAt) {
+      const s = Math.round((Date.now() - state.lastFetchAt) / 1000);
+      $('updated').textContent = s < 60 ? `há ${s}s` : `há ${Math.floor(s / 60)} min`;
+      $('updated').title = 'Última atualização: ' + new Date(state.lastFetchAt).toLocaleTimeString('pt-BR');
+    }
+  }
+
+  function reportHeight() {
+    if (state && !state.compact) window.overlay.reportHeight($('panel').getBoundingClientRect().height);
+  }
+
+  window.overlay.onState((s) => { state = s; render(); });
+  setInterval(tick, 1000);
+
+  $('refresh').onclick = () => window.overlay.refresh();
+  $('minimize').onclick = () => window.overlay.setCompact(true);
+  $('expand').onclick = () => window.overlay.setCompact(false);
+  $('close').onclick = () => window.overlay.hide();
+  $('pause').onclick = () => window.overlay.setPaused(!state.paused);
+  $('interval').onchange = (e) => window.overlay.setInterval(e.target.value);
+</script>
+</body>
+</html>

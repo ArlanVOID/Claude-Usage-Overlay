@@ -1,0 +1,13 @@
+{
+  "name": "claude-usage-overlay",
+  "version": "1.0.0",
+  "description": "Overlay always-on-top com os dados do /usage do Claude",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "node scripts/start.js",
+    "shortcut": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-shortcut.ps1"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1"
+  }
+}
