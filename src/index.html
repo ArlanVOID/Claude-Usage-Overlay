@@ -114,6 +114,38 @@
   .mini-pct { width: 32px; text-align: right; font-weight: 600; }
   .compact .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warn); flex: none; }
   .hidden { display: none !important; }
+
+  /* Claude Code sessions */
+  .agent {
+    display: flex; align-items: center; gap: 7px;
+    margin: 0 -6px 2px; padding: 4px 6px; border-radius: 6px; font-size: 11.5px;
+  }
+  .agent[data-dismiss] { cursor: pointer; -webkit-app-region: no-drag; }
+  .agent[data-dismiss]:hover { background: rgba(255,255,255,.05); }
+  .agent-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--muted); }
+  .agent-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .agent-state { font-size: 10.5px; }
+  .agent-time { min-width: 34px; text-align: right; color: var(--muted); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  .agent.ask .agent-dot, .agent-flag.ask { background: var(--accent); animation: ping 2s ease-out infinite; }
+  .agent.ask .agent-state { color: var(--accent); }
+  .agent.done .agent-dot, .agent-flag.done { background: var(--ok); }
+  .agent.done .agent-state { color: var(--ok); }
+  .agent.busy { color: var(--muted); }
+  .agent.busy .agent-name { font-weight: 400; }
+  .agent.busy .agent-dot { animation: breathe 1.6s ease-in-out infinite; }
+  .agent-flag {
+    width: 7px; height: 7px; border-radius: 50%; flex: none; cursor: pointer;
+    -webkit-app-region: no-drag;
+  }
+  @keyframes ping {
+    0% { box-shadow: 0 0 0 0 rgba(217,119,87,.55); }
+    70%, 100% { box-shadow: 0 0 0 5px rgba(217,119,87,0); }
+  }
+  @keyframes breathe { 50% { opacity: .3; } }
+  .panel.alert { animation: alert-glow 1.1s ease-in-out 2; }
+  @keyframes alert-glow {
+    50% { border-color: rgba(217,119,87,.75); box-shadow: inset 0 0 0 1px rgba(217,119,87,.35); }
+  }
 </style>
 </head>
 <body>
@@ -154,6 +186,7 @@
 
     <!-- Minimized view -->
     <div id="compact" class="compact hidden">
+      <span class="agent-flag hidden" id="mini-agent"></span>
       <div class="mini" id="mini"></div>
       <span class="dot hidden" id="mini-paused" title="Atualização pausada"></span>
       <button class="icon-btn" id="expand" title="Expandir">
@@ -175,6 +208,12 @@
     weekly_cowork: 'Semanal — Cowork',
   };
   const GROUPS = { session: 'Sessão', weekly: 'Semanal' };
+  const AGENT_STATES = {
+    question: { label: 'Pergunta', cls: 'ask' },
+    permission: { label: 'Permissão', cls: 'ask' },
+    done: { label: 'Concluído', cls: 'done' },
+    working: { label: 'Trabalhando', cls: 'busy' },
+  };
 
   function labelFor(l) {
     if (LABELS[l.kind]) return LABELS[l.kind] + (l.scope ? ` (${l.scope})` : '');
@@ -282,8 +321,37 @@
     return html;
   }
 
+  function fmtSince(ts) {
+    const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+    if (s < 60) return 'agora';
+    if (s < 3600) return `${Math.floor(s / 60)} min`;
+    return `${Math.floor(s / 3600)}h`;
+  }
+
+  function agentTitle(a) {
+    const lines = [a.cwd || a.project];
+    if (a.message) lines.push(a.message);
+    if (a.state !== 'working') lines.push('Clique para dispensar');
+    return lines.join('\n');
+  }
+
+  function agentsHtml(list) {
+    if (!list.length) return '';
+    return `<div class="section-title">Claude Code</div>` + list.map((a) => {
+      const st = AGENT_STATES[a.state];
+      return `
+        <div class="agent ${st.cls}" ${a.state !== 'working' ? `data-dismiss="${esc(a.id)}"` : ''} title="${esc(agentTitle(a))}">
+          <span class="agent-dot"></span>
+          <span class="agent-name">${esc(a.project)}</span>
+          <span class="agent-state">${st.label}</span>
+          <span class="agent-time" data-since="${a.ts}">${fmtSince(a.ts)}</span>
+        </div>`;
+    }).join('');
+  }
+
   function render() {
     if (!state) return;
+    const agents = state.agents || [];
     const d = state.data;
     $('full').classList.toggle('hidden', state.compact);
     $('compact').classList.toggle('hidden', !state.compact);
@@ -303,6 +371,7 @@
     let html = '';
     if (state.paused) html += `<div class="msg paused">Atualização pausada — mostrando os últimos dados obtidos.</div>`;
     if (state.error) html += `<div class="msg error">${esc(state.error)}</div>`;
+    html += agentsHtml(agents);
 
     const limits = d ? limitsFrom(d) : [];
     if (!d && !state.error) html += `<div class="limit-sub" style="padding:14px 0">Carregando…</div>`;
@@ -329,6 +398,12 @@
         </div>`;
       }).join('') || `<div class="mini-row" style="color:var(--muted)">${state.error ? 'Erro ao obter dados' : 'Carregando…'}</div>`;
 
+    // Minimized: one dot for sessions waiting on the user (questions win over "done").
+    const waiting = agents.filter((a) => a.state !== 'working');
+    const flag = $('mini-agent');
+    flag.className = `agent-flag ${waiting.length ? AGENT_STATES[waiting[0].state].cls : 'hidden'}`;
+    flag.title = waiting.map((a) => `${a.project} — ${AGENT_STATES[a.state].label}`).join('\n') + '\nClique para expandir';
+
     tick();
     reportHeight();
   }
@@ -336,6 +411,9 @@
   function tick() {
     document.querySelectorAll('[data-countdown]').forEach((el) => {
       el.textContent = fmtCountdown(el.dataset.countdown);
+    });
+    document.querySelectorAll('[data-since]').forEach((el) => {
+      el.textContent = fmtSince(Number(el.dataset.since));
     });
     if (state && state.lastFetchAt) {
       const s = Math.round((Date.now() - state.lastFetchAt) / 1000);
@@ -349,7 +427,22 @@
   }
 
   window.overlay.onState((s) => { state = s; render(); });
+  window.overlay.onAgentAlert(() => {
+    const panel = $('panel');
+    panel.classList.remove('alert');
+    void panel.offsetWidth; // restart the animation
+    panel.classList.add('alert');
+  });
+  $('panel').addEventListener('animationend', (e) => {
+    if (e.target === $('panel')) $('panel').classList.remove('alert');
+  });
   setInterval(tick, 1000);
+
+  $('content').onclick = (e) => {
+    const row = e.target.closest('[data-dismiss]');
+    if (row) window.overlay.dismissAgent(row.dataset.dismiss);
+  };
+  $('mini-agent').onclick = () => window.overlay.setCompact(false);
 
   $('refresh').onclick = () => window.overlay.refresh();
   $('minimize').onclick = () => window.overlay.setCompact(true);

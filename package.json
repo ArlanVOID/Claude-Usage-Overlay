@@ -5,7 +5,9 @@
   "main": "src/main.js",
   "scripts": {
     "start": "node scripts/start.js",
-    "shortcut": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-shortcut.ps1"
+    "shortcut": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-shortcut.ps1",
+    "hooks": "node scripts/install-hooks.js",
+    "hooks:remove": "node scripts/install-hooks.js --uninstall"
   },
   "devDependencies": {
     "electron": "^33.2.1"

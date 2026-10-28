@@ -12,7 +12,8 @@ Overlay para Windows que mostra, sempre por cima dos outros aplicativos, os mesm
 - **Atualização automática** (30s a 10 min) e logo após cada reset diário/semanal
 - **Pausar** a atualização dos dados de uso
 - Barras com cor por nível: verde, amarelo (≥70%) e vermelho (≥90%)
-- Ícone na bandeja: mostrar/ocultar, atualizar, pausar, intervalo, iniciar com o Windows, sair
+- **Avisos do Claude Code**: mostra quando o Claude faz uma pergunta, pede permissão ou termina a tarefa (veja abaixo)
+- Ícone na bandeja: mostrar/ocultar, atualizar, pausar, intervalo, iniciar com o Windows, avisos, sair
 
 ## Requisitos
 
@@ -35,6 +36,34 @@ npm run shortcut   # cria o atalho "Claude Usage Overlay" com o ícone
 - Ou rode `npm start`
 
 Se o login expirar, o overlay avisa — basta abrir o Claude Code para renovar.
+
+## Avisos do Claude Code
+
+O overlay pode avisar, de forma discreta, quando uma sessão do Claude Code para e fica esperando por você:
+
+| Estado | Quando |
+| --- | --- |
+| **Pergunta** (laranja, pulsando) | o Claude usou o `AskUserQuestion` ou terminou a resposta com uma pergunta |
+| **Permissão** (laranja, pulsando) | o Claude está esperando você aprovar uma ferramenta |
+| **Concluído** (verde) | o Claude terminou a tarefa |
+| Trabalhando (cinza) | a sessão está em andamento |
+
+- Cada sessão aparece pelo nome da pasta do projeto, com o tempo desde o último evento; passe o mouse para ver a mensagem
+- Clique em uma sessão para dispensar o aviso; ele também some sozinho quando você responde ao Claude
+- A borda do overlay pisca rapidamente quando chega um aviso novo, e o ícone da bandeja ganha um ponto verde
+- Minimizado, um pontinho à esquerda das barras indica sessões aguardando (clique para expandir)
+- Na bandeja: **Avisos do Claude Code** liga/desliga os avisos e **Som nos avisos** toca um bipe (desligado por padrão)
+
+Para ativar, instale os hooks no Claude Code (uma vez só):
+
+```bash
+npm run hooks          # ou, na bandeja: "Hooks instalados no Claude Code"
+npm run hooks:remove   # para remover
+```
+
+Isso adiciona ao `~/.claude/settings.json` (com backup em `settings.json.overlay-backup`) os hooks `UserPromptSubmit`, `Stop`, `Notification`, `SessionEnd` e `PreToolUse`/`PostToolUse` do `AskUserQuestion`, todos chamando `scripts/overlay-hook.js`. Seus outros hooks e configurações não são alterados. Reinicie as sessões do Claude Code já abertas depois de instalar. Se você mover a pasta do overlay, instale os hooks de novo.
+
+O hook só grava um pequeno arquivo por sessão em `~/.claude/overlay-sessions/`, que o overlay observa — nada sai do seu computador.
 
 ## Como funciona
 
