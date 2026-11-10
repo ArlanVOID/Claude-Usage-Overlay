@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen, shell, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen, dialog } = require('electron');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -17,7 +17,7 @@ const COMPACT_SIZE = { width: 250, height: 44 };
 const settingsPath = path.join(app.getPath('userData'), 'overlay-settings.json');
 const defaults = {
   x: null, y: null, compact: false, paused: false, intervalSec: 60, fullHeight: FULL_SIZE.height,
-  agentAlerts: true, agentSound: false,
+  agentAlerts: true, agentChime: true,
 };
 let settings = loadSettings();
 
@@ -136,8 +136,7 @@ function loadAgents() {
   );
   agents = next;
   if (fresh && settings.agentAlerts) {
-    if (win && !win.isDestroyed()) win.webContents.send('agent-alert');
-    if (settings.agentSound) shell.beep();
+    if (win && !win.isDestroyed()) win.webContents.send('agent-alert', settings.agentChime);
   }
   // Polling runs every few seconds; only re-render when the list changed.
   const key = JSON.stringify(visibleAgents());
@@ -252,6 +251,8 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      // The alert chime plays without the user having clicked the window.
+      autoplayPolicy: 'no-user-gesture-required',
     },
   });
   // 'screen-saver' keeps it above most fullscreen/borderless apps too.
@@ -377,9 +378,9 @@ function updateTrayMenu(waiting = visibleAgents().filter((a) => a.state !== 'wor
       {
         label: 'Som nos avisos',
         type: 'checkbox',
-        checked: settings.agentSound,
+        checked: settings.agentChime,
         enabled: settings.agentAlerts,
-        click: (i) => setAgentSetting('agentSound', i.checked),
+        click: (i) => setAgentSetting('agentChime', i.checked),
       },
       {
         label: 'Hooks instalados no Claude Code',

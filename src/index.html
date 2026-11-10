@@ -427,11 +427,34 @@
   }
 
   window.overlay.onState((s) => { state = s; render(); });
-  window.overlay.onAgentAlert(() => {
+  // Soft two-note chime, much quieter than the Windows system beep.
+  let audio = null;
+  function chime() {
+    try {
+      audio = audio || new AudioContext();
+      const t0 = audio.currentTime;
+      [880, 1318.5].forEach((freq, i) => {
+        const t = t0 + i * 0.12;
+        const osc = audio.createOscillator();
+        const gain = audio.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.06, t + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+        osc.connect(gain).connect(audio.destination);
+        osc.start(t);
+        osc.stop(t + 0.4);
+      });
+    } catch {}
+  }
+
+  window.overlay.onAgentAlert((withChime) => {
     const panel = $('panel');
     panel.classList.remove('alert');
     void panel.offsetWidth; // restart the animation
     panel.classList.add('alert');
+    if (withChime) chime();
   });
   $('panel').addEventListener('animationend', (e) => {
     if (e.target === $('panel')) $('panel').classList.remove('alert');

@@ -52,7 +52,7 @@ O overlay pode avisar, de forma discreta, quando uma sessão do Claude Code para
 - Clique em uma sessão para dispensar o aviso; ele também some sozinho quando você responde ao Claude
 - A borda do overlay pisca rapidamente quando chega um aviso novo, e o ícone da bandeja ganha um ponto verde
 - Minimizado, um pontinho à esquerda das barras indica sessões aguardando (clique para expandir)
-- Na bandeja: **Avisos do Claude Code** liga/desliga os avisos e **Som nos avisos** toca um bipe (desligado por padrão)
+- Na bandeja: **Avisos do Claude Code** liga/desliga os avisos e **Som nos avisos** toca um toque curto e discreto (ligado por padrão)
 
 Para ativar, instale os hooks no Claude Code (uma vez só):
 

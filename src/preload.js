@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('overlay', {
   onState: (cb) => ipcRenderer.on('state', (_e, s) => cb(s)),
-  onAgentAlert: (cb) => ipcRenderer.on('agent-alert', () => cb()),
+  onAgentAlert: (cb) => ipcRenderer.on('agent-alert', (_e, chime) => cb(chime)),
   dismissAgent: (id) => ipcRenderer.send('dismiss-agent', id),
   refresh: () => ipcRenderer.send('refresh'),
   setPaused: (v) => ipcRenderer.send('set-paused', v),
